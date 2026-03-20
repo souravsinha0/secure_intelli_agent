@@ -1,0 +1,1926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Velocis Intelli Agent — Secure Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════
+   DESIGN TOKENS — clean light-on-dark,
+   Cognisphere-inspired minimalist palette
+═══════════════════════════════════════ */
+:root {
+  /* Backgrounds */
+  --bg:        #0f1117;
+  --panel:     #161b27;
+  --card:      #1c2235;
+  --card2:     #212840;
+  --input-bg:  #1a1f2e;
+
+  /* Borders */
+  --border:    #2a3147;
+  --border2:   #333d58;
+
+  /* Brand */
+  --blue:      #4a90d9;
+  --blue-dim:  #2d5a9e;
+  --blue-glow: rgba(74,144,217,0.18);
+  --cyan:      #38bdf8;
+
+  /* Semantic */
+  --red:       #f87171;
+  --red-dim:   rgba(248,113,113,0.12);
+  --green:     #4ade80;
+  --green-dim: rgba(74,222,128,0.10);
+  --amber:     #fbbf24;
+
+  /* Text — much higher contrast than before */
+  --t1:  #f0f4ff;   /* primary */
+  --t2:  #a8b4d0;   /* secondary */
+  --t3:  #6b7a9e;   /* muted */
+  --t4:  #3d4d6e;   /* disabled */
+
+  /* Typography */
+  --sans: 'Inter', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+
+  /* Radii */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--t1);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Subtle ambient glow */
+body::before {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 800px 500px at 15% 10%, rgba(74,144,217,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 600px 400px at 85% 90%, rgba(56,189,248,0.03) 0%, transparent 60%);
+}
+
+/* ─────────────────── HEADER ─────────────────── */
+header {
+  position: relative; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; height: 56px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.logo { display: flex; align-items: center; gap: 12px; }
+
+.logo-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--blue-dim), var(--blue));
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.logo-wordmark { display: flex; flex-direction: column; gap: 1px; }
+.logo-name { font-size: 14px; font-weight: 700; color: var(--t1); letter-spacing: 0.02em; line-height: 1; }
+.logo-sub  { font-size: 10px; color: var(--t3); font-family: var(--mono); letter-spacing: 0.05em; }
+
+.h-divider { width: 1px; height: 24px; background: var(--border2); margin: 0 4px; }
+
+/* Status pill */
+.status-pill {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 12px; border-radius: 20px;
+  background: var(--card); border: 1px solid var(--border2);
+  font-size: 12px; color: var(--t2); font-family: var(--mono);
+  transition: all .25s;
+}
+.status-pill.active { border-color: rgba(74,222,128,.35); background: rgba(74,222,128,.05); color: var(--green); }
+.sdot { width: 7px; height: 7px; border-radius: 50%; background: var(--t4); transition: all .3s; flex-shrink: 0; }
+.sdot.on { background: var(--green); box-shadow: 0 0 7px var(--green); animation: blink 2s infinite; }
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+
+.mode-badge {
+  padding: 4px 10px; border-radius: 5px;
+  background: var(--card); border: 1px solid var(--border);
+  font-size: 11px; font-family: var(--mono); color: var(--t3);
+}
+
+.model-badge {
+  padding: 4px 10px; border-radius: 5px;
+  background: var(--card); border: 1px solid var(--border);
+  font-size: 11px; font-family: var(--mono); color: var(--t2);
+  max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.h-right { display: flex; align-items: center; gap: 8px; }
+
+.icon-btn {
+  width: 36px; height: 36px; border-radius: var(--r-sm);
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--t3); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+}
+.icon-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-glow); }
+.icon-btn.active { border-color: var(--blue); color: var(--blue); background: var(--blue-glow); }
+
+/* ─────────────────── LAYOUT ─────────────────── */
+.app { position: relative; z-index: 1; display: flex; flex: 1; overflow: hidden; }
+
+/* ─────────────────── CHAT AREA ─────────────────── */
+.chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+.messages {
+  flex: 1; overflow-y: auto; padding: 24px 28px;
+  display: flex; flex-direction: column; gap: 20px;
+  scroll-behavior: smooth;
+}
+.messages::-webkit-scrollbar { width: 5px; }
+.messages::-webkit-scrollbar-track { background: transparent; }
+.messages::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+/* Empty state */
+.empty-state {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+}
+.empty-shield {
+  width: 72px; height: 72px; border-radius: 18px;
+  background: var(--card); border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--t4);
+}
+.empty-state h3 { font-size: 16px; font-weight: 600; color: var(--t2); }
+.empty-state p  { font-size: 13px; color: var(--t3); }
+
+/* ─────────────────── MESSAGES ─────────────────── */
+.msg { display: flex; gap: 12px; animation: fadeUp .2s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+.msg.user   { align-self: flex-end;   flex-direction: row-reverse; max-width: 74%; }
+.msg.ai,
+.msg.blocked,
+.msg.sysmsg { align-self: flex-start; max-width: 80%; }
+
+.avatar {
+  width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; font-family: var(--mono);
+}
+.av-u { background: linear-gradient(135deg, var(--blue-dim), var(--blue)); color: #fff; }
+.av-a { background: var(--card2); border: 1px solid var(--border2); color: var(--blue); font-size: 11px; }
+.av-w { background: var(--red-dim); border: 1px solid rgba(248,113,113,.3); color: var(--red); }
+
+.bubble {
+  padding: 12px 16px; border-radius: var(--r-lg);
+  font-size: 14px; line-height: 1.65;
+  word-break: break-word; white-space: pre-wrap;
+}
+.msg.user   .bubble { background: linear-gradient(145deg, rgba(45,90,158,.5), rgba(74,144,217,.25)); border: 1px solid rgba(74,144,217,.3); color: var(--t1); border-bottom-right-radius: 4px; }
+.msg.ai     .bubble { background: var(--card); border: 1px solid var(--border); color: var(--t1); border-bottom-left-radius: 4px; }
+.msg.blocked .bubble { background: var(--red-dim); border: 1px solid rgba(248,113,113,.25); color: var(--t1); border-bottom-left-radius: 4px; }
+.msg.sysmsg .bubble { background: var(--card); border: 1px solid var(--border); color: var(--t2); font-size: 13px; font-family: var(--mono); border-bottom-left-radius: 4px; }
+
+/* File chips in message bubble */
+.file-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.file-chip-b {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 5px;
+  background: var(--blue-glow); border: 1px solid rgba(74,144,217,.3);
+  font-size: 11px; font-family: var(--mono); color: var(--cyan);
+}
+
+/* Defense passed — small inline shield */
+.shield-ok {
+  display: inline-flex; align-items: center; vertical-align: middle;
+  margin-left: 8px; color: var(--green); opacity: .85;
+  position: relative; top: -1px;
+}
+
+/* Violation card */
+.viol-card {
+  margin-top: 12px; padding: 12px 14px; border-radius: var(--r-md);
+  background: rgba(248,113,113,.06); border: 1px solid rgba(248,113,113,.25);
+  font-size: 12px; font-family: var(--mono);
+}
+.viol-head { font-size: 12px; font-weight: 600; color: var(--red); display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.viol-row  { display: flex; gap: 10px; margin-bottom: 5px; align-items: flex-start; }
+.viol-lbl  { color: var(--t3); min-width: 130px; flex-shrink: 0; font-size: 11px; }
+.viol-val  { color: var(--t2); font-size: 11px; }
+.vtag {
+  display: inline-block; padding: 2px 7px; border-radius: 4px;
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; margin: 1px;
+}
+.t-sec  { background: rgba(248,113,113,.2); color: var(--red); }
+.t-priv { background: rgba(251,191,36,.2);  color: var(--amber); }
+.t-safe { background: rgba(251,191,36,.12); color: #fb923c; }
+.t-rel  { background: rgba(168,180,208,.12);color: var(--t2); }
+
+/* Typing / scanning */
+.typing { display: flex; gap: 5px; align-items: center; padding: 4px 0; }
+.tdot { width: 7px; height: 7px; border-radius: 50%; background: var(--blue); animation: bnc 1.2s infinite; }
+.tdot:nth-child(2){animation-delay:.2s} .tdot:nth-child(3){animation-delay:.4s}
+@keyframes bnc{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-7px);opacity:1}}
+.scanbar { height: 2px; border-radius: 2px; overflow: hidden; background: var(--card2); margin-bottom: 8px; }
+.scanfill { height: 100%; background: linear-gradient(90deg,transparent,var(--cyan),transparent); animation: smv 1.4s ease-in-out infinite; }
+@keyframes smv{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
+.scanlbl { font-size: 12px; color: var(--t3); font-family: var(--mono); }
+
+/* ─────────────────── INPUT AREA ─────────────────── */
+.input-area {
+  padding: 14px 20px 18px;
+  background: var(--panel); border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.input-box {
+  background: var(--input-bg); border: 1px solid var(--border2);
+  border-radius: var(--r-lg); transition: border-color .2s, box-shadow .2s; overflow: hidden;
+}
+.input-box:focus-within {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-glow);
+}
+.file-bar { display: none; align-items: center; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.file-bar.vis { display: flex; }
+.fchip {
+  display: flex; align-items: center; gap: 5px; padding: 3px 9px;
+  background: var(--card2); border: 1px solid var(--border2);
+  border-radius: 5px; font-size: 11px; font-family: var(--mono); color: var(--t2);
+}
+.fchip-x { background: none; border: none; color: var(--t4); cursor: pointer; font-size: 14px; padding: 0 0 0 3px; line-height: 1; transition: color .2s; }
+.fchip-x:hover { color: var(--red); }
+.fchip-sz { color: var(--t3); font-size: 10px; }
+.fchip-warn { color: var(--amber); font-size: 10px; }
+
+.input-row { display: flex; align-items: flex-end; gap: 8px; padding: 10px 10px 10px 16px; }
+#chatInput {
+  flex: 1; background: none; border: none; outline: none;
+  color: var(--t1); font-family: var(--sans); font-size: 14px;
+  line-height: 1.5; resize: none; max-height: 140px; min-height: 22px;
+}
+#chatInput::placeholder { color: var(--t4); }
+
+.input-actions { display: flex; align-items: center; gap: 6px; }
+.attach-btn {
+  width: 32px; height: 32px; border-radius: 7px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--t3); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all .2s;
+}
+.attach-btn:hover { color: var(--blue); border-color: var(--blue); background: var(--blue-glow); }
+.send-btn {
+  width: 36px; height: 36px; border-radius: 9px; border: none;
+  background: var(--blue); color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all .2s;
+  box-shadow: 0 3px 12px rgba(74,144,217,.35);
+}
+.send-btn:hover { background: #5a9fe8; box-shadow: 0 4px 16px rgba(74,144,217,.5); transform: translateY(-1px); }
+.send-btn:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+
+.input-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 2px 0; font-size: 11px; color: var(--t3); font-family: var(--mono);
+}
+.def-hint { display: flex; align-items: center; gap: 6px; }
+.hint-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--t4); transition: all .3s; }
+.hint-dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+/* ─────────────────── ADMIN PANEL ─────────────────── */
+.admin {
+  width: 0; overflow: hidden; flex-shrink: 0;
+  background: var(--panel); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; transition: width .3s ease;
+}
+.admin.open { width: 420px; }
+.admin-inner { width: 420px; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+
+.admin-header { padding: 20px 20px 0; flex-shrink: 0; }
+.admin-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.admin-title-row h2 { font-size: 16px; font-weight: 600; color: var(--t1); }
+
+.admin-tabs {
+  display: flex; border-bottom: 1px solid var(--border);
+  margin: 0 -20px; padding: 0 20px; gap: 2px; overflow-x: auto;
+}
+.admin-tabs::-webkit-scrollbar { display: none; }
+.tab-btn {
+  padding: 8px 14px; font-size: 12px; font-weight: 500;
+  color: var(--t3); cursor: pointer; border-bottom: 2px solid transparent;
+  transition: all .2s; white-space: nowrap;
+  background: none; border-top: none; border-left: none; border-right: none;
+  font-family: var(--sans);
+}
+.tab-btn:hover { color: var(--t2); }
+.tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+.admin-body { flex: 1; overflow-y: auto; padding: 20px; }
+.admin-body::-webkit-scrollbar { width: 4px; }
+.admin-body::-webkit-scrollbar-track { background: transparent; }
+.admin-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* ─────── Form elements ─────── */
+.form-group { margin-bottom: 20px; }
+.form-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; color: var(--t2);
+  margin-bottom: 6px; letter-spacing: 0.01em;
+}
+.form-label .req { color: var(--red); }
+.form-desc { font-size: 12px; color: var(--t3); margin-bottom: 7px; line-height: 1.5; }
+
+.form-input, .form-select, .form-textarea {
+  width: 100%; background: var(--card); border: 1px solid var(--border2);
+  border-radius: var(--r-sm); padding: 9px 12px; color: var(--t1);
+  font-family: var(--sans); font-size: 13px; outline: none; transition: all .2s;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-glow);
+}
+.form-input::placeholder, .form-textarea::placeholder { color: var(--t4); }
+.form-select {
+  cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7a9e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+}
+.form-select option { background: var(--card); }
+.form-textarea { resize: vertical; min-height: 80px; line-height: 1.5; font-family: var(--mono); font-size: 12px; }
+
+.input-with-eye { position: relative; }
+.input-with-eye .form-input { padding-right: 38px; }
+.eye-btn {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--t3); cursor: pointer; font-size: 14px;
+  transition: color .2s; padding: 0; line-height: 1;
+}
+.eye-btn:hover { color: var(--t2); }
+
+/* Section divider + title */
+.s-div  { height: 1px; background: var(--border); margin: 18px 0; }
+.s-title {
+  font-size: 11px; font-weight: 600; color: var(--t3);
+  text-transform: uppercase; letter-spacing: .08em; margin-bottom: 14px;
+}
+
+/* ─────── Mode selector cards (API vs Gateway) ─────── */
+.mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
+.mode-card {
+  padding: 12px; border-radius: var(--r-md);
+  border: 2px solid var(--border); background: var(--card);
+  cursor: pointer; transition: all .2s; text-align: center;
+}
+.mode-card:hover { border-color: var(--border2); }
+.mode-card.selected { border-color: var(--blue); background: var(--blue-glow); }
+.mode-card-icon { font-size: 22px; margin-bottom: 5px; }
+.mode-card-title { font-size: 13px; font-weight: 600; color: var(--t1); }
+.mode-card-desc  { font-size: 11px; color: var(--t3); margin-top: 3px; font-family: var(--mono); }
+.mode-card.selected .mode-card-title { color: var(--blue); }
+
+/* Info callout */
+.info-box {
+  padding: 10px 13px; border-radius: var(--r-sm);
+  background: var(--blue-glow); border: 1px solid rgba(74,144,217,.3);
+  font-size: 12px; color: var(--t2); line-height: 1.5; margin-bottom: 16px;
+}
+.info-box strong { color: var(--cyan); }
+
+/* ─────── Toggle rows ─────── */
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.toggle-row:last-child { border-bottom: none; }
+.toggle-info { flex: 1; }
+.toggle-name { font-size: 13px; font-weight: 500; color: var(--t1); margin-bottom: 2px; }
+.toggle-desc { font-size: 11px; color: var(--t3); font-family: var(--mono); }
+.toggle-sw { position: relative; width: 40px; height: 22px; flex-shrink: 0; margin-left: 12px; }
+.toggle-sw input { opacity: 0; width: 0; height: 0; }
+.toggle-sl {
+  position: absolute; cursor: pointer; inset: 0;
+  background: var(--card2); border: 1px solid var(--border2); border-radius: 22px; transition: all .2s;
+}
+.toggle-sl::before {
+  content: ''; position: absolute;
+  width: 16px; height: 16px; left: 2px; top: 2px;
+  background: var(--t4); border-radius: 50%; transition: all .2s;
+}
+.toggle-sw input:checked + .toggle-sl { background: rgba(74,144,217,.25); border-color: var(--blue); }
+.toggle-sw input:checked + .toggle-sl::before { transform: translateX(18px); background: var(--blue); box-shadow: 0 0 8px rgba(74,144,217,.6); }
+
+/* ─────── Severity selector ─────── */
+.sev-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.sev-btn {
+  padding: 10px 6px; border-radius: var(--r-sm); border: 2px solid var(--border);
+  text-align: center; cursor: pointer; transition: all .2s; background: var(--card);
+}
+.sev-btn.sel-low    { border-color: var(--green); background: var(--green-dim); }
+.sev-btn.sel-medium { border-color: var(--amber); background: rgba(251,191,36,.08); }
+.sev-btn.sel-high   { border-color: var(--red);   background: var(--red-dim); }
+.sev-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; font-family: var(--mono); }
+.sl-low    { color: var(--green); }
+.sl-medium { color: var(--amber); }
+.sl-high   { color: var(--red);   }
+
+/* ─────── Buttons ─────── */
+.save-btn {
+  width: 100%; padding: 10px; border: none; border-radius: var(--r-md);
+  background: var(--blue); color: #fff;
+  font-family: var(--sans); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .2s; margin-top: 4px;
+  box-shadow: 0 3px 12px rgba(74,144,217,.3);
+}
+.save-btn:hover { background: #5a9fe8; transform: translateY(-1px); box-shadow: 0 5px 16px rgba(74,144,217,.4); }
+.save-status { text-align: center; font-size: 11px; font-family: var(--mono); color: var(--green); margin-top: 7px; min-height: 15px; }
+
+.test-btn {
+  width: 100%; padding: 8px; background: transparent;
+  border: 1px solid var(--border2); border-radius: var(--r-sm);
+  color: var(--t2); font-family: var(--mono); font-size: 11px;
+  cursor: pointer; transition: all .2s; margin-top: 6px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.test-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-glow); }
+
+.danger-btn {
+  width: 100%; padding: 9px; background: transparent;
+  border: 1px solid rgba(248,113,113,.35); border-radius: var(--r-md);
+  color: var(--red); font-family: var(--sans); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all .2s;
+}
+.danger-btn:hover { background: var(--red-dim); }
+
+/* ─────── Config status cards ─────── */
+.cfg-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 12px; margin-bottom: 16px;
+  font-family: var(--mono); font-size: 12px;
+}
+.cfg-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 5px 0; border-bottom: 1px solid var(--border);
+}
+.cfg-row:last-child { border-bottom: none; }
+.cfg-key { color: var(--t3); font-size: 11px; }
+.cfg-val { color: var(--t2); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.cfg-val.ok  { color: var(--green); }
+.cfg-val.bad { color: var(--red); }
+
+/* ─────── Toast ─────── */
+.toast {
+  position: fixed; bottom: 100px; left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  padding: 9px 20px; border-radius: var(--r-md);
+  font-size: 12px; font-family: var(--mono);
+  z-index: 200; opacity: 0; transition: all .28s; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok  { background: rgba(74,222,128,.14); border: 1px solid rgba(74,222,128,.35); color: var(--green); }
+.toast.err { background: rgba(248,113,113,.14); border: 1px solid rgba(248,113,113,.35); color: var(--red); }
+
+#defConnectionSettings { transition: opacity .2s; }
+#defConnectionSettings.dimmed { opacity: .38; pointer-events: none; user-select: none; }
+
+#fileInput { display: none; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div class="logo-wordmark">
+      <div class="logo-name">VELOCIS</div>
+      <div class="logo-sub">Intelli Agent</div>
+    </div>
+    <div class="h-divider"></div>
+    <span style="font-size:12px;color:var(--t3)">Secure Chat</span>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="status-pill" id="defPill">
+      <div class="sdot" id="defDot"></div>
+      <span id="defText">Defense: Not configured</span>
+    </div>
+    <div class="mode-badge" id="modeBadge" style="display:none"></div>
+    <div class="model-badge" id="modelBadge">No model</div>
+  </div>
+
+  <div class="h-right">
+    <button class="icon-btn" title="Clear chat" onclick="clearChat()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+    </button>
+    <button class="icon-btn" id="settingsBtn" title="Admin Settings" onclick="toggleAdmin()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- ═══════════════ APP BODY ═══════════════ -->
+<div class="app">
+
+  <!-- ── CHAT ── -->
+  <div class="chat-area">
+    <div class="messages" id="msgContainer">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-shield">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3>Protected by Cisco AI Defense</h3>
+        <p>Configure settings ⚙ in the panel on the right, then start chatting.</p>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-box">
+        <div class="file-bar" id="fileBar"></div>
+        <div class="input-row">
+          <textarea id="chatInput" rows="1" placeholder="Type a message — AI Defense will scan before sending…"></textarea>
+          <div class="input-actions">
+            <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Attach text file">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="input-footer">
+        <div class="def-hint">
+          <div class="hint-dot" id="hintDot"></div>
+          <span id="hintText">AI Defense inactive — open settings ⚙ to configure</span>
+        </div>
+        <span>Shift+Enter for newline · Enter to send</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADMIN PANEL ── -->
+  <div class="admin" id="adminPanel">
+    <div class="admin-inner">
+      <div class="admin-header">
+        <div class="admin-title-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <h2>Settings</h2>
+        </div>
+        <div class="admin-tabs">
+          <button class="tab-btn active" onclick="switchTab('defense',this)">AI Defense</button>
+          <button class="tab-btn" onclick="switchTab('model',this)">Model</button>
+          <button class="tab-btn" onclick="switchTab('policies',this)">Policies</button>
+          <button class="tab-btn" onclick="switchTab('status',this)">Status</button>
+        </div>
+      </div>
+
+      <div class="admin-body">
+
+        <!-- ══ TAB: AI Defense ══ -->
+        <div class="tab-pane active" id="tab-defense">
+
+          <!-- ── Master enable/disable toggle ── -->
+          <div class="toggle-row" style="border:1px solid var(--border2);border-radius:var(--r-md);padding:12px 14px;background:var(--card);margin-bottom:18px">
+            <div class="toggle-info">
+              <div class="toggle-name" style="color:var(--t1)">AI Defense Inspection</div>
+              <div class="toggle-desc" style="margin-top:3px">When disabled, messages are sent directly to the LLM without any AI Defense scan.</div>
+            </div>
+            <label class="toggle-sw" style="flex-shrink:0;margin-left:16px">
+              <input type="checkbox" id="def_enabled" checked onchange="onDefEnabledToggle()">
+              <span class="toggle-sl"></span>
+            </label>
+          </div>
+
+          <!-- All connection settings wrapped so they can be dimmed when disabled -->
+          <div id="defConnectionSettings">
+          <div class="s-title">Connection Mode</div>
+
+          <!-- Mode selector: API Direct vs Gateway -->
+          <div class="mode-cards">
+            <div class="mode-card selected" id="mc-api" onclick="setDefMode('api')">
+              <div class="mode-card-icon">🔑</div>
+              <div class="mode-card-title">API Direct</div>
+              <div class="mode-card-desc">API key + regional server</div>
+            </div>
+            <div class="mode-card" id="mc-gateway" onclick="setDefMode('gateway')">
+              <div class="mode-card-icon">🌐</div>
+              <div class="mode-card-title">Gateway / Proxy</div>
+              <div class="mode-card-desc">Custom gateway URL</div>
+            </div>
+          </div>
+
+          <!-- API MODE settings -->
+          <div id="api-settings">
+            <div class="form-group">
+              <div class="form-label">Regional Endpoint <span class="req">*</span></div>
+              <div class="form-desc">Cisco AI Defense regional server. The path <code style="color:var(--cyan)">/api/v1/inspect/chat</code> is appended automatically.</div>
+              <select class="form-select" id="defRegion" onchange="onRegionChange()">
+                <option value="https://us.api.inspect.aidefense.security.cisco.com">🇺🇸 US — us.api.inspect.aidefense.security.cisco.com</option>
+                <option value="https://ap.api.inspect.aidefense.security.cisco.com">🌏 AP — ap.api.inspect.aidefense.security.cisco.com</option>
+                <option value="https://eu.api.inspect.aidefense.security.cisco.com">🇪🇺 EU — eu.api.inspect.aidefense.security.cisco.com</option>
+                <option value="custom">✏️ Custom URL…</option>
+              </select>
+            </div>
+            <div class="form-group" id="customRegionGrp" style="display:none">
+              <div class="form-label">Custom Base URL</div>
+              <input type="text" class="form-input" id="defCustomUrl" placeholder="https://your-instance.aidefense.security.cisco.com" />
+            </div>
+            <div class="form-group">
+              <div class="form-label">API Key <span class="req">*</span></div>
+              <div class="form-desc">Sent as header <code style="color:var(--cyan)">X-Cisco-AI-Defense-API-Key</code>. Generated in the AI Defense UI.</div>
+              <div class="input-with-eye">
+                <input type="password" class="form-input" id="defApiKey" placeholder="Your AI Defense API Key…" />
+                <button class="eye-btn" onclick="toggleEye('defApiKey',this)">👁</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- GATEWAY MODE settings -->
+          <div id="gateway-settings" style="display:none">
+            <div class="info-box">
+              <strong>Gateway / Proxy Mode</strong><br>
+              Use this when your organisation routes AI Defense inspection through an on-prem or cloud gateway. The chatbot POSTs the Chat Inspection payload directly to your gateway URL — no API key header is sent.
+            </div>
+            <div class="form-group">
+              <div class="form-label">Gateway URL <span class="req">*</span></div>
+              <div class="form-desc">Full endpoint URL that accepts a <code style="color:var(--cyan)">ChatInspectRequest</code> and returns an <code style="color:var(--cyan)">InspectResponse</code>.</div>
+              <input type="text" class="form-input" id="gatewayUrl" placeholder="https://your-gateway.internal/api/v1/inspect/chat" />
+            </div>
+            <div class="form-group">
+              <div class="form-label">Extra Headers (JSON, optional)</div>
+              <div class="form-desc">Additional request headers as a JSON object, e.g. <code style="color:var(--cyan)">{"X-Org-ID":"abc"}</code></div>
+              <textarea class="form-textarea" id="gatewayHeaders" placeholder='{"X-Custom-Header": "value"}' style="min-height:58px"></textarea>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="form-label">Request Timeout (ms)</div>
+            <input type="number" class="form-input" id="defTimeout" value="15000" min="2000" max="60000" />
+          </div>
+
+          <button class="test-btn" onclick="testDefConn()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Test Connection
+          </button>
+
+          </div><!-- /defConnectionSettings -->
+
+          <div class="s-div"></div>
+          <button class="save-btn" onclick="saveSettings()">Save AI Defense Settings</button>
+          <div class="save-status" id="ss1"></div>
+        </div>
+
+        <!-- ══ TAB: Model ══ -->
+        <div class="tab-pane" id="tab-model">
+          <div class="s-title">LLM Configuration</div>
+
+          <div class="form-group">
+            <div class="form-label">Provider</div>
+            <select class="form-select" id="modelProvider" onchange="updateModels()">
+              <option value="openai">OpenAI (GPT)</option>
+              <option value="google">Google (Gemini)</option>
+              <option value="anthropic">Anthropic (Claude)</option>
+              <option value="onprem">🏢 On-Prem / Custom Server</option>
+              <option value="custom">Custom / OpenAI-compatible</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <div class="form-label">Model</div>
+            <select class="form-select" id="modelName"></select>
+          </div>
+
+          <div class="form-group" id="customEpGrp" style="display:none">
+            <div class="form-label">Custom API Endpoint</div>
+            <input type="text" class="form-input" id="customEndpoint" placeholder="https://api.example.com/v1/chat/completions" />
+          </div>
+
+          <!-- On-Prem Server settings -->
+          <div id="onpremGrp" style="display:none">
+            <div class="info-box">
+              <strong>On-Prem / Custom Server</strong><br>
+              Routes requests through your organisation's locally-hosted OpenAI-compatible inference server.
+              The model name and base URL are pre-configured in the backend <code style="color:var(--cyan)">.env</code>.
+            </div>
+            <div class="form-group">
+              <div class="form-label">Server Base URL</div>
+              <input type="text" class="form-input" id="onpremBaseUrl" placeholder="http://10.52.1.13:8000/v1" />
+              <div class="form-desc" style="margin-top:5px">OpenAI-compatible endpoint, e.g. <code style="color:var(--cyan)">http://10.52.1.13:8000/v1</code></div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="form-label">API Key <span class="req">*</span></div>
+            <div class="form-desc">Provider API key (sk-… for OpenAI, AIza… for Gemini, sk-ant-… for Claude)</div>
+            <div class="input-with-eye">
+              <input type="password" class="form-input" id="llmApiKey" placeholder="Paste your API key…" />
+              <button class="eye-btn" onclick="toggleEye('llmApiKey',this)">👁</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="form-label">System Prompt</div>
+            <textarea class="form-textarea" id="systemPrompt">You are a helpful, accurate, and concise assistant. Always provide factual and useful responses.</textarea>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <div class="form-label">Max Tokens</div>
+              <input type="number" class="form-input" id="maxTokens" value="2048" min="100" max="8000" />
+            </div>
+            <div class="form-group">
+              <div class="form-label">Temperature</div>
+              <input type="number" class="form-input" id="temperature" value="0.7" min="0" max="2" step="0.1" />
+            </div>
+          </div>
+
+          <div class="s-div"></div>
+          <button class="save-btn" onclick="saveSettings()">Save Model Settings</button>
+          <div class="save-status" id="ss2"></div>
+        </div>
+
+        <!-- ══ TAB: Policies ══ -->
+        <div class="tab-pane" id="tab-policies">
+
+          <!-- ── Server Policy toggle ── -->
+          <div class="s-title">Policy Source</div>
+          <div class="toggle-row" style="margin-bottom:4px;border:1px solid var(--border2);border-radius:var(--r-md);padding:12px 14px;background:var(--card)">
+            <div class="toggle-info">
+              <div class="toggle-name" style="color:var(--t1)">Use Server Policy</div>
+              <div class="toggle-desc" style="line-height:1.5;margin-top:3px">
+                When <strong style="color:var(--green)">enabled</strong>: the <code style="color:var(--cyan)">config.enabled_rules</code> field is <em>omitted</em> from the request — the AI Defense connection's pre-configured server-side policy applies automatically.<br>
+                When <strong style="color:var(--amber)">disabled</strong>: custom rules below are sent in the payload.
+              </div>
+            </div>
+            <label class="toggle-sw" style="flex-shrink:0;margin-left:16px">
+              <input type="checkbox" id="pol_serverPolicy" checked onchange="onServerPolicyToggle()">
+              <span class="toggle-sl"></span>
+            </label>
+          </div>
+
+          <!-- ── Custom rules (shown only when server policy is OFF) ── -->
+          <div id="customRulesSection" style="display:none;margin-top:16px">
+            <div class="s-title">Custom Rules</div>
+            <div class="form-desc" style="margin-bottom:14px">
+              These map to <code style="color:var(--cyan)">config.enabled_rules[].rule_name</code> in the Cisco Chat Inspection API.
+              Attached file text is included in the scanned payload.
+            </div>
+            <div id="rulesUI"></div>
+          </div>
+
+          <div class="s-div"></div>
+          <div class="s-title">Severity Block Threshold</div>
+          <div class="form-desc" style="margin-bottom:12px">Block when AI Defense returns severity at or above this level</div>
+          <div class="sev-grid">
+            <div class="sev-btn" id="sev-LOW" onclick="setSev('LOW')"><div class="sev-label sl-low">Low</div><div style="font-size:10px;color:var(--t3);margin-top:2px">& above</div></div>
+            <div class="sev-btn sel-medium" id="sev-MEDIUM" onclick="setSev('MEDIUM')"><div class="sev-label sl-medium">Medium</div><div style="font-size:10px;color:var(--t3);margin-top:2px">& above</div></div>
+            <div class="sev-btn" id="sev-HIGH" onclick="setSev('HIGH')"><div class="sev-label sl-high">High</div><div style="font-size:10px;color:var(--t3);margin-top:2px">only</div></div>
+          </div>
+
+          <div class="s-div"></div>
+          <div class="s-title">Response Scanning</div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-name">Scan LLM Responses</div>
+              <div class="toggle-desc">Inspect AI output before delivering to user</div>
+            </div>
+            <label class="toggle-sw"><input type="checkbox" id="pol_scanResp" checked><span class="toggle-sl"></span></label>
+          </div>
+
+          <div class="s-div"></div>
+          <div class="form-group">
+            <div class="form-label">Custom Block Message</div>
+            <textarea class="form-textarea" id="blockMsg" style="min-height:60px">⚠️ This request was blocked by Cisco AI Defense due to a policy violation. Your query could not be processed.</textarea>
+          </div>
+
+          <button class="save-btn" onclick="saveSettings()">Save Policy Settings</button>
+          <div class="save-status" id="ss3"></div>
+        </div>
+
+        <!-- ══ TAB: Status ══ -->
+        <div class="tab-pane" id="tab-status">
+          <div class="s-title">Configuration</div>
+          <div class="cfg-card" id="statusCard"></div>
+
+          <div class="s-title">Session Stats</div>
+          <div class="cfg-card" id="statsCard"></div>
+
+          <div class="s-div"></div>
+          <button class="test-btn" onclick="exportCfg()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export Config (API keys excluded)
+          </button>
+          <div style="margin-top:8px">
+            <button class="test-btn" onclick="document.getElementById('impInput').click()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Import Config
+            </button>
+            <input type="file" id="impInput" accept=".json" style="display:none" onchange="importCfg(event)" />
+          </div>
+
+          <div class="s-div"></div>
+          <button class="danger-btn" onclick="resetAll()">Reset All Settings</button>
+        </div>
+
+      </div><!-- admin-body -->
+    </div>
+  </div><!-- admin panel -->
+
+</div><!-- app -->
+
+<!--
+  TEXT-ONLY file input — PDF and binary files excluded to avoid parsing issues.
+  Accepted: plain text formats that can be reliably read as UTF-8.
+-->
+<input type="file" id="fileInput" multiple
+  accept=".txt,.csv,.json,.md,.py,.js,.ts,.xml,.log,.yaml,.yml,.html,.htm,.sh,.sql,.r,.rb,.go,.java,.cpp,.c,.cs,.swift,.kt,.rs"
+  onchange="handleFiles(event)" />
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   CONSTANTS
+══════════════════════════════════════════════════════════ */
+
+// Exact rule_name enum values from Cisco AI Defense API spec
+const RULES = [
+  { name:"Prompt Injection",                desc:"Prompt injection / jailbreak attacks",                def:true  },
+  { name:"PII",                             desc:"Personally Identifiable Information (SSN, email…)",   def:true  },
+  { name:"PCI",                             desc:"Payment card data (card number, CVV, expiry…)",       def:true  },
+  { name:"PHI",                             desc:"Protected Health Information (HIPAA-covered data)",   def:true  },
+  { name:"Hate Speech",                     desc:"Content targeting protected groups",                  def:true  },
+  { name:"Harassment",                      desc:"Threatening or abusive language",                     def:true  },
+  { name:"Violence & Public Safety Threats",desc:"Content encouraging violence or threats",             def:true  },
+  { name:"Sexual Content & Exploitation",   desc:"Explicit or exploitative sexual content",             def:true  },
+  { name:"Code Detection",                  desc:"Embedded executable code or exploit snippets",        def:false },
+  { name:"Profanity",                       desc:"Profane or highly offensive language",                def:false },
+  { name:"Social Division & Polarization",  desc:"Content promoting societal division",                 def:false },
+];
+
+// Severity ordering from InspectResponse enum
+const SEV_ORDER = { "NONE_SEVERITY":0, "LOW":1, "MEDIUM":2, "HIGH":3 };
+
+const MODELS = {
+  openai:    ["gpt-4o","gpt-4o-mini","gpt-4-turbo","gpt-3.5-turbo"],
+  google:    ["gemini-2.5-flash","gemini-2.5-flash-lite","gemini-1.5-pro","gemini-1.5-flash"],
+  anthropic: ["claude-opus-4-6","claude-sonnet-4-6","claude-haiku-4-5-20251001"],
+  onprem:    ["__ONPREM_MODEL__"],  // placeholder replaced at runtime from /api/config
+  custom:    ["custom-model"],
+};
+
+// Text-only file extensions we accept
+const TEXT_EXTS = new Set([
+  'txt','csv','json','md','py','js','ts','xml','log','yaml','yml',
+  'html','htm','sh','sql','r','rb','go','java','cpp','c','cs','swift','kt','rs'
+]);
+
+/* ══════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════ */
+let cfg = {
+  // AI Defense connection mode: 'api' | 'gateway'
+  defMode:      'api',
+  defEnabled:   true,   // master switch — false = bypass AI Defense entirely
+
+  // API mode
+  defRegion:    'https://us.api.inspect.aidefense.security.cisco.com',
+  defCustomUrl: '',
+  defApiKey:    '',
+
+  // Gateway mode
+  gatewayUrl:     '',
+  gatewayHeaders: '',
+
+  defTimeout:   15000,
+
+  // LLM
+  modelProvider: 'openai',
+  modelName:     'gpt-4o',
+  llmApiKey:     '',
+  customEndpoint:'',
+  systemPrompt:  'You are a helpful, accurate, and concise assistant. Always provide factual and useful responses.',
+  maxTokens:     2048,
+  temperature:   0.7,
+
+  // On-Prem (populated from /api/config on load)
+  onpremModelName: '',
+  onpremBaseUrl:   '',
+
+  // Backend mode: 'direct' = browser calls LLM directly (original behaviour)
+  //               'backend' = browser calls /v1/chat/completions on this server
+  useBackend: false,
+
+  // Policies
+  blockMsg:         '⚠️ This request was blocked by Cisco AI Defense due to a policy violation. Your query could not be processed.',
+  useServerPolicy:  true,   // true = send no config.enabled_rules; server-side policy applies
+  enabledRules:     RULES.filter(r=>r.def).map(r=>r.name),
+  sevThreshold:     'MEDIUM',
+  scanResp:         true,
+};
+
+let attachedFiles = [];
+let stats = { total:0, scanned:0, passed:0, blocked:0 };
+let adminOpen = false;
+let activeSev = 'MEDIUM';
+let msgId = 0;
+
+/* ══════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', () => {
+  loadCfg();
+  fetchBackendConfig();   // load on-prem model from server
+  buildRulesUI();
+  populateForm();
+  updateStatusBar();
+  updateStatusTab();
+
+  const ta = document.getElementById('chatInput');
+  ta.addEventListener('input', () => {
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
+  });
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+});
+
+/* ══════════════════════════════════════════════════════════
+   BACKEND CONFIG FETCH
+══════════════════════════════════════════════════════════ */
+async function fetchBackendConfig() {
+  try {
+    const r = await fetch('/api/config');
+    if (!r.ok) return;
+    const data = await r.json();
+    if (data.onprem) {
+      cfg.onpremModelName = data.onprem.model_name || cfg.onpremModelName;
+      cfg.onpremBaseUrl   = data.onprem.base_url   || cfg.onpremBaseUrl;
+      // Replace placeholder in MODELS
+      MODELS.onprem = [cfg.onpremModelName || 'onprem-model'];
+    }
+    // If backend is detected (we're served from FastAPI), enable backend mode by default
+    cfg.useBackend = true;
+    populateForm();
+    updateStatusBar();
+  } catch { /* running standalone — backend mode unavailable */ }
+}
+
+
+function saveCfg() {
+  try { localStorage.setItem('viad_cfg', JSON.stringify(cfg)); } catch {}
+}
+function loadCfg() {
+  try {
+    const raw = localStorage.getItem('viad_cfg');
+    if (raw) cfg = { ...cfg, ...JSON.parse(raw) };
+  } catch {}
+}
+
+/* ══════════════════════════════════════════════════════════
+   ADMIN PANEL
+══════════════════════════════════════════════════════════ */
+function toggleAdmin() {
+  adminOpen = !adminOpen;
+  document.getElementById('adminPanel').classList.toggle('open', adminOpen);
+  document.getElementById('settingsBtn').classList.toggle('active', adminOpen);
+  if (adminOpen) updateStatusTab();
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('.tab-pane').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'status') updateStatusTab();
+}
+
+/* ── Defense mode selector ── */
+function setDefMode(mode) {
+  cfg.defMode = mode;
+  document.getElementById('mc-api').classList.toggle('selected', mode === 'api');
+  document.getElementById('mc-gateway').classList.toggle('selected', mode === 'gateway');
+  document.getElementById('api-settings').style.display = mode === 'api' ? 'block' : 'none';
+  document.getElementById('gateway-settings').style.display = mode === 'gateway' ? 'block' : 'none';
+}
+
+/* ── Master Defense enable/disable ── */
+function onDefEnabledToggle() {
+  const on = document.getElementById('def_enabled').checked;
+  document.getElementById('defConnectionSettings').classList.toggle('dimmed', !on);
+}
+
+function onRegionChange() {
+  const v = document.getElementById('defRegion').value;
+  document.getElementById('customRegionGrp').style.display = v === 'custom' ? 'block' : 'none';
+}
+
+/* ── Get effective Defense base URL ── */
+function getDefenseBaseUrl() {
+  if (cfg.defMode === 'gateway') {
+    // In gateway mode the URL already includes the full path
+    return (cfg.gatewayUrl || '').replace(/\/$/, '');
+  }
+  // API mode — base + standard path
+  const r = cfg.defRegion;
+  if (r === 'custom') return (cfg.defCustomUrl || '').replace(/\/$/, '');
+  return r.replace(/\/$/, '');
+}
+
+function getDefenseBaseUrlFromForm() {
+  const mode = cfg.defMode;
+  if (mode === 'gateway') return (document.getElementById('gatewayUrl').value || '').replace(/\/$/, '');
+  const r = document.getElementById('defRegion').value;
+  if (r === 'custom') return (document.getElementById('defCustomUrl').value || '').replace(/\/$/, '');
+  return r.replace(/\/$/, '');
+}
+
+/* ── Build request headers for AI Defense ── */
+function buildDefenseHeaders(mode, apiKey, extraHeadersJson) {
+  const headers = { 'Content-Type': 'application/json' };
+
+  if (mode === 'api') {
+    // Cisco AI Defense API — documented auth header
+    if (apiKey) headers['X-Cisco-AI-Defense-API-Key'] = apiKey;
+  } else {
+    // Gateway mode — no token; apply only extra custom headers if provided
+    if (extraHeadersJson && extraHeadersJson.trim()) {
+      try {
+        const extra = JSON.parse(extraHeadersJson);
+        Object.assign(headers, extra);
+      } catch { /* ignore malformed JSON */ }
+    }
+  }
+  return headers;
+}
+
+/* ── Models dropdown ── */
+function updateModels() {
+  const p = document.getElementById('modelProvider').value;
+  const models = MODELS[p] || [];
+  document.getElementById('modelName').innerHTML =
+    models.map(m => `<option value="${m}">${m === '__ONPREM_MODEL__' ? (cfg.onpremModelName || m) : m}</option>`).join('');
+  document.getElementById('customEpGrp').style.display = p === 'custom' ? 'block' : 'none';
+  document.getElementById('onpremGrp').style.display = p === 'onprem' ? 'block' : 'none';
+  // For on-prem, pre-fill URL from cfg
+  if (p === 'onprem' && cfg.onpremBaseUrl) {
+    document.getElementById('onpremBaseUrl').value = cfg.onpremBaseUrl;
+  }
+}
+
+/* ── Server policy toggle handler ── */
+function onServerPolicyToggle() {
+  const on = document.getElementById('pol_serverPolicy').checked;
+  document.getElementById('customRulesSection').style.display = on ? 'none' : 'block';
+}
+
+/* ── Populate form from cfg ── */
+function populateForm() {
+  setDefMode(cfg.defMode || 'api');
+  document.getElementById('def_enabled').checked = cfg.defEnabled !== false;
+  onDefEnabledToggle();
+  document.getElementById('defRegion').value = cfg.defRegion || 'https://us.api.inspect.aidefense.security.cisco.com';
+  onRegionChange();
+  document.getElementById('defCustomUrl').value = cfg.defCustomUrl || '';
+  document.getElementById('defApiKey').value = cfg.defApiKey || '';
+  document.getElementById('gatewayUrl').value = cfg.gatewayUrl || '';
+  document.getElementById('gatewayHeaders').value = cfg.gatewayHeaders || '';
+  document.getElementById('defTimeout').value = cfg.defTimeout || 15000;
+
+  document.getElementById('modelProvider').value = cfg.modelProvider || 'openai';
+  updateModels();
+  setTimeout(() => { document.getElementById('modelName').value = cfg.modelName || ''; }, 10);
+  document.getElementById('llmApiKey').value = cfg.llmApiKey || '';
+  document.getElementById('customEndpoint').value = cfg.customEndpoint || '';
+  document.getElementById('systemPrompt').value = cfg.systemPrompt || '';
+  document.getElementById('maxTokens').value = cfg.maxTokens || 2048;
+  document.getElementById('temperature').value = cfg.temperature || 0.7;
+
+  document.getElementById('blockMsg').value = cfg.blockMsg || '';
+  document.getElementById('pol_scanResp').checked = cfg.scanResp !== false;
+  document.getElementById('pol_serverPolicy').checked = cfg.useServerPolicy !== false;
+  onServerPolicyToggle(); // show/hide custom rules section
+  activeSev = cfg.sevThreshold || 'MEDIUM';
+  setSev(activeSev, true);
+}
+
+/* ── Save all settings ── */
+function saveSettings() {
+  cfg.defMode      = cfg.defMode || 'api';
+  cfg.defEnabled   = document.getElementById('def_enabled').checked;
+  cfg.defRegion    = document.getElementById('defRegion').value;
+  cfg.defCustomUrl = document.getElementById('defCustomUrl').value.trim();
+  cfg.defApiKey    = document.getElementById('defApiKey').value.trim();
+  cfg.gatewayUrl   = document.getElementById('gatewayUrl').value.trim();
+  cfg.gatewayHeaders = document.getElementById('gatewayHeaders').value.trim();
+  cfg.defTimeout   = parseInt(document.getElementById('defTimeout').value) || 15000;
+
+  cfg.modelProvider  = document.getElementById('modelProvider').value;
+  cfg.modelName      = document.getElementById('modelName').value;
+  cfg.llmApiKey      = document.getElementById('llmApiKey').value.trim();
+  cfg.customEndpoint = document.getElementById('customEndpoint').value.trim();
+  cfg.systemPrompt   = document.getElementById('systemPrompt').value;
+  cfg.maxTokens      = parseInt(document.getElementById('maxTokens').value) || 2048;
+  cfg.temperature    = parseFloat(document.getElementById('temperature').value) || 0.7;
+
+  // On-prem overrides
+  const obEl = document.getElementById('onpremBaseUrl');
+  if (obEl) cfg.onpremBaseUrl = obEl.value.trim() || cfg.onpremBaseUrl;
+
+  cfg.blockMsg        = document.getElementById('blockMsg').value;
+  cfg.scanResp        = document.getElementById('pol_scanResp').checked;
+  cfg.useServerPolicy = document.getElementById('pol_serverPolicy').checked;
+  cfg.sevThreshold    = activeSev;
+
+  // Collect custom rules (only relevant when useServerPolicy is false)
+  cfg.enabledRules = [];
+  document.querySelectorAll('#rulesUI input[data-rule]').forEach(cb => {
+    if (cb.checked) cfg.enabledRules.push(cb.dataset.rule);
+  });
+
+  saveCfg();
+  updateStatusBar();
+  updateStatusTab();
+  showToast('Settings saved ✓', 'ok');
+  ['ss1','ss2','ss3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = '✓ Saved'; setTimeout(() => el.textContent = '', 2500); }
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   STATUS BAR
+══════════════════════════════════════════════════════════ */
+function updateStatusBar() {
+  const mode = cfg.defMode || 'api';
+  const enabled = cfg.defEnabled !== false;
+  const defOk = enabled && (mode === 'api'
+    ? !!(cfg.defApiKey && (cfg.defRegion !== 'custom' || cfg.defCustomUrl))
+    : !!cfg.gatewayUrl);
+
+  const pill = document.getElementById('defPill');
+  document.getElementById('defDot').className = 'sdot' + (defOk ? ' on' : '');
+
+  if (!enabled) {
+    document.getElementById('defText').textContent = 'AI Defense: Disabled';
+    pill.className = 'status-pill';
+  } else {
+    document.getElementById('defText').textContent = defOk ? 'AI Defense: Active' : 'AI Defense: Not configured';
+    pill.className = 'status-pill' + (defOk ? ' active' : '');
+  }
+
+  const mb = document.getElementById('modeBadge');
+  if (defOk) {
+    mb.style.display = 'block';
+    mb.textContent = mode === 'api' ? 'API' : 'Gateway';
+  } else {
+    mb.style.display = 'none';
+  }
+
+  document.getElementById('hintDot').className = 'hint-dot' + (defOk ? ' on' : '');
+  const policyLabel = cfg.useServerPolicy !== false ? 'server policy' : `${cfg.enabledRules.length} custom rules`;
+  const backendLabel = cfg.useBackend ? ' · 🏢 backend mode' : '';
+  document.getElementById('hintText').textContent = !enabled
+    ? 'AI Defense disabled — messages go directly to LLM'
+    : defOk
+      ? `AI Defense active (${mode === 'api' ? 'API' : 'Gateway'}) · ${policyLabel} · ${cfg.scanResp ? 'scanning prompts & responses' : 'scanning prompts only'}${backendLabel}`
+      : 'AI Defense inactive — open settings ⚙ to configure';
+
+  document.getElementById('modelBadge').textContent = cfg.modelName || 'No model';
+}
+
+function updateStatusTab() {
+  const mode = cfg.defMode || 'api';
+  const enabled = cfg.defEnabled !== false;
+  const defOk = enabled && (mode === 'api'
+    ? !!(cfg.defApiKey && (cfg.defRegion !== 'custom' || cfg.defCustomUrl))
+    : !!cfg.gatewayUrl);
+  const llmOk = !!(cfg.llmApiKey && cfg.modelName);
+
+  const endpoint = mode === 'api'
+    ? maskUrl(cfg.defRegion === 'custom' ? cfg.defCustomUrl : cfg.defRegion)
+    : maskUrl(cfg.gatewayUrl);
+
+  document.getElementById('statusCard').innerHTML = `
+    <div class="cfg-row"><span class="cfg-key">AI Defense</span><span class="cfg-val ${enabled?'ok':'bad'}">${enabled ? '✓ Enabled' : '✗ Disabled (bypass)'}</span></div>
+    <div class="cfg-row"><span class="cfg-key">Mode</span><span class="cfg-val">${mode === 'api' ? '🔑 API Direct' : '🌐 Gateway'}</span></div>
+    <div class="cfg-row"><span class="cfg-key">Endpoint</span><span class="cfg-val ${defOk?'ok':'bad'}">${endpoint || '⚠ Not set'}</span></div>
+    ${mode === 'api' ? `<div class="cfg-row"><span class="cfg-key">Inspect Path</span><span class="cfg-val" style="color:var(--cyan)">/api/v1/inspect/chat</span></div>
+    <div class="cfg-row"><span class="cfg-key">API Key</span><span class="cfg-val ${cfg.defApiKey?'ok':'bad'}">${cfg.defApiKey ? '●●●●' + cfg.defApiKey.slice(-4) : '⚠ Not set'}</span></div>` : ''}
+    <div class="cfg-row"><span class="cfg-key">Policy Source</span><span class="cfg-val" style="color:${cfg.useServerPolicy!==false?'var(--green)':'var(--amber)'}">${cfg.useServerPolicy!==false ? '✓ Server policy' : `Custom (${cfg.enabledRules.length} rules)`}</span></div>
+    <div class="cfg-row"><span class="cfg-key">Block Severity ≥</span><span class="cfg-val">${cfg.sevThreshold}</span></div>
+    <div class="cfg-row"><span class="cfg-key">Scan Responses</span><span class="cfg-val">${cfg.scanResp ? 'Yes' : 'No'}</span></div>
+    <div class="cfg-row"><span class="cfg-key">LLM</span><span class="cfg-val ${llmOk?'ok':'bad'}">${cfg.modelProvider} / ${cfg.modelName || '⚠ not set'}</span></div>`;
+
+  document.getElementById('statsCard').innerHTML = `
+    <div class="cfg-row"><span class="cfg-key">Total Messages</span><span class="cfg-val">${stats.total}</span></div>
+    <div class="cfg-row"><span class="cfg-key">Defense Scans</span><span class="cfg-val">${stats.scanned}</span></div>
+    <div class="cfg-row"><span class="cfg-key">Passed</span><span class="cfg-val ok">${stats.passed}</span></div>
+    <div class="cfg-row"><span class="cfg-key">Blocked</span><span class="cfg-val ${stats.blocked > 0 ? 'bad' : ''}">${stats.blocked}</span></div>`;
+}
+
+function maskUrl(u) {
+  if (!u) return '';
+  try { return new URL(u).hostname; } catch { return u.slice(0, 40) + '…'; }
+}
+
+/* ── Severity selector ── */
+function setSev(lv, silent) {
+  activeSev = lv;
+  ['LOW','MEDIUM','HIGH'].forEach(l => {
+    const el = document.getElementById('sev-' + l);
+    if (!el) return;
+    el.className = 'sev-btn' + (l === lv ? ' sel-' + l.toLowerCase() : '');
+  });
+}
+
+/* ── Rules UI ── */
+function buildRulesUI() {
+  document.getElementById('rulesUI').innerHTML = RULES.map(r => {
+    const on = cfg.enabledRules.includes(r.name);
+    return `<div class="toggle-row">
+      <div class="toggle-info">
+        <div class="toggle-name">${r.name}</div>
+        <div class="toggle-desc">${r.desc}</div>
+      </div>
+      <label class="toggle-sw">
+        <input type="checkbox" data-rule="${r.name}" ${on ? 'checked' : ''}>
+        <span class="toggle-sl"></span>
+      </label>
+    </div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════
+   FILE HANDLING — TEXT FILES ONLY
+══════════════════════════════════════════════════════════ */
+function handleFiles(event) {
+  const newFiles = Array.from(event.target.files);
+  let rejected = 0;
+
+  newFiles.forEach(f => {
+    const ext = f.name.split('.').pop().toLowerCase();
+    if (!TEXT_EXTS.has(ext)) {
+      rejected++;
+      return;
+    }
+    // 500 KB limit per file to keep prompts manageable
+    if (f.size > 512 * 1024) {
+      showToast(`${f.name} exceeds 500 KB limit — skipped`, 'err');
+      return;
+    }
+    attachedFiles.push(f);
+  });
+
+  if (rejected > 0) {
+    showToast(`${rejected} file(s) skipped — only plain text files allowed`, 'err');
+  }
+
+  renderFileBar();
+  event.target.value = '';
+}
+
+function renderFileBar() {
+  const bar = document.getElementById('fileBar');
+  if (!attachedFiles.length) { bar.classList.remove('vis'); return; }
+  bar.classList.add('vis');
+  bar.innerHTML = attachedFiles.map((f, i) => `
+    <div class="fchip">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span>${esc(f.name)}</span>
+      <span class="fchip-sz">${fmtBytes(f.size)}</span>
+      <button class="fchip-x" onclick="rmFile(${i})">×</button>
+    </div>`).join('');
+}
+
+function rmFile(i) { attachedFiles.splice(i, 1); renderFileBar(); }
+function fmtBytes(b) { return b < 1024 ? b + 'B' : b < 1048576 ? (b/1024).toFixed(1) + 'KB' : (b/1048576).toFixed(1) + 'MB'; }
+
+/* Read file as UTF-8 text (only text files accepted) */
+function readFileText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = e => resolve(e.target.result || '');
+    reader.onerror = () => reject(new Error(`Cannot read ${file.name}`));
+    reader.readAsText(file, 'utf-8');
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   SEND MESSAGE — main flow
+══════════════════════════════════════════════════════════ */
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const userText = input.value.trim();
+
+  if (!userText && attachedFiles.length === 0) return;
+
+  if (!cfg.llmApiKey || !cfg.modelName) {
+    showToast('Configure LLM model & API key in Settings → Model', 'err');
+    if (!adminOpen) toggleAdmin();
+    return;
+  }
+
+  document.getElementById('sendBtn').disabled = true;
+
+  /* ── 1. Read attached files ── */
+  const fileData = [];
+  for (const f of attachedFiles) {
+    try {
+      const content = await readFileText(f);
+      fileData.push({ name: f.name, size: f.size, content });
+    } catch (e) {
+      fileData.push({ name: f.name, size: f.size, content: `[Error reading file: ${e.message}]` });
+    }
+  }
+
+  /* ── 2. Build full prompt content (text + file bodies) ──
+     The combined string is what gets sent to AI Defense for inspection
+     AND what gets forwarded to the LLM if it passes. */
+  let fullPrompt = userText;
+  if (fileData.length > 0) {
+    fileData.forEach(fd => {
+      const body = fd.content.length > 8000
+        ? fd.content.slice(0, 8000) + '\n[… truncated to 8000 chars]'
+        : fd.content;
+      fullPrompt += `\n\n${'─'.repeat(48)}\n📎 Attached: ${fd.name} (${fmtBytes(fd.size)})\n${'─'.repeat(48)}\n${body}`;
+    });
+  }
+
+  /* ── 3. Display user message ── */
+  addUserMsg(userText, fileData.map(f => f.name));
+  input.value = '';
+  input.style.height = 'auto';
+  attachedFiles = [];
+  renderFileBar();
+  document.getElementById('emptyState')?.remove();
+  stats.total++;
+
+  const mode = cfg.defMode || 'api';
+  const defOk = mode === 'api'
+    ? !!(cfg.defApiKey && (cfg.defRegion !== 'custom' || cfg.defCustomUrl))
+    : !!cfg.gatewayUrl;
+  // defActive: master switch on AND configured AND (server policy OR custom rules)
+  const defActive = cfg.defEnabled !== false
+    && defOk
+    && (cfg.useServerPolicy !== false || cfg.enabledRules.length > 0);
+
+  /* ── 4. SCAN PROMPT (+ file content) with AI Defense ── */
+  if (defActive) {
+    const scanId = addScanMsg(fileData.length > 0, false);
+    stats.scanned++;
+
+    let defResult = null;
+    try {
+      defResult = await callDefenseInspect(fullPrompt, 'user');
+    } catch (e) {
+      removeMsg(scanId);
+      addSysMsg(`⚠ AI Defense scan error: ${e.message}\nProceeding without defense scan.`);
+    }
+    removeMsg(scanId);
+
+    if (defResult !== null) {
+      if (shouldBlock(defResult)) {
+        stats.blocked++;
+        updateStatusTab();
+        addBlockedMsg(defResult, false, fileData.length > 0);
+        document.getElementById('sendBtn').disabled = false;
+        return;
+      }
+      stats.passed++;
+    }
+  }
+
+  /* ── 5. Call LLM ── */
+  const typId = addTyping();
+  let llmResp;
+  try {
+    llmResp = await callLLM(fullPrompt);
+  } catch (e) {
+    removeMsg(typId);
+    // Backend signalled a block (content_filter from server-side AI Defense)
+    if (e.message && e.message.startsWith('__BACKEND_BLOCKED__:')) {
+      stats.blocked++;
+      updateStatusTab();
+      const blockText = e.message.replace('__BACKEND_BLOCKED__:', '');
+      addSysMsg('🛡 ' + blockText);
+      document.getElementById('sendBtn').disabled = false;
+      return;
+    }
+    addSysMsg(`LLM Error: ${e.message}`);
+    document.getElementById('sendBtn').disabled = false;
+    updateStatusTab();
+    return;
+  }
+  removeMsg(typId);
+
+  /* ── 6. SCAN LLM RESPONSE ── */
+  if (defActive && cfg.scanResp) {
+    const rId = addScanMsg(false, true);
+    stats.scanned++;
+    let rResult = null;
+    try {
+      rResult = await callDefenseInspect(llmResp, 'assistant');
+    } catch { /* silent — don't block on scan failure */ }
+    removeMsg(rId);
+
+    if (rResult !== null) {
+      if (shouldBlock(rResult)) {
+        stats.blocked++;
+        updateStatusTab();
+        addBlockedMsg(rResult, true, false);
+        document.getElementById('sendBtn').disabled = false;
+        return;
+      }
+      stats.passed++;
+    }
+  }
+
+  /* ── 7. Show response ── */
+  addAiMsg(llmResp, defActive);
+  document.getElementById('sendBtn').disabled = false;
+  updateStatusTab();
+}
+
+/* ── shouldBlock ──────────────────────────────────────────
+   Based on the real Cisco AI Defense response schema:
+   - severity can be NONE_SEVERITY even on genuine violations
+   - is_safe: false  +  classifications[] non-empty  = block
+   - is_safe: false  +  classifications[] empty      = block (safe fallback)
+   - is_safe: true                                   = allow
+   - The `action` field ("Block" / "Allow") is also cross-checked when present.
+─────────────────────────────────────────────────────────── */
+function shouldBlock(defResult) {
+  // Explicit safe signal — never block
+  if (defResult.is_safe === true) return false;
+
+  // is_safe = false means a violation was detected.
+  // We block when classifications confirms the nature of the violation,
+  // OR simply when is_safe is false (covers edge cases with empty classifications).
+  if (defResult.is_safe === false) {
+    // Extra confirmation: also respect the `action` field if present
+    if (defResult.action && defResult.action !== 'Block') return false;
+    return true;
+  }
+
+  return false;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CISCO AI DEFENSE — Chat Inspection API
+   POST /api/v1/inspect/chat
+   Header (API mode):     X-Cisco-AI-Defense-API-Key: <key>
+   Header (Gateway mode): only custom extra headers (no token)
+   Body: ChatInspectRequest {
+     messages: [{ role, content }],
+     metadata: { src_app, created_at, client_transaction_id },
+     config?:  { enabled_rules: [{ rule_name }] }   ← omitted when useServerPolicy=true
+   }
+   Response: InspectResponse {
+     is_safe, severity, classifications[], rules[],
+     attack_technique, explanation, event_id
+   }
+══════════════════════════════════════════════════════════ */
+async function callDefenseInspect(content, role) {
+  const mode = cfg.defMode || 'api';
+  const baseUrl = getDefenseBaseUrl();
+  if (!baseUrl) throw new Error('Defense URL not configured');
+
+  // In gateway mode the user provides the full endpoint URL;
+  // in API mode we append the standard path.
+  const url = mode === 'gateway'
+    ? baseUrl
+    : `${baseUrl}/api/v1/inspect/chat`;
+
+  // Build headers (no token for gateway)
+  const headers = buildDefenseHeaders(mode, cfg.defApiKey, cfg.gatewayHeaders);
+
+  // ChatInspectRequest — exact schema from API spec
+  const body = {
+    messages: [
+      { role: role, content: content }
+    ],
+    metadata: {
+      src_app: 'velocis-intelli-agent',
+      created_at: new Date().toISOString(),
+      client_transaction_id: 'txn-' + Date.now()
+    }
+  };
+
+  // Only include config.enabled_rules when server policy is OFF
+  // When useServerPolicy is true, omitting config lets the server-side
+  // connection policy apply — which is what the AI Defense API expects.
+  if (cfg.useServerPolicy === false) {
+    body.config = {
+      enabled_rules: cfg.enabledRules.map(name => ({ rule_name: name }))
+    };
+  }
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), cfg.defTimeout || 15000);
+
+  let resp;
+  try {
+    resp = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: ctrl.signal
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (!resp.ok) {
+    let errMsg;
+    try { errMsg = (await resp.json()).message || resp.statusText; }
+    catch { errMsg = await resp.text().catch(() => resp.statusText); }
+    throw new Error(`AI Defense ${resp.status}: ${String(errMsg).slice(0, 200)}`);
+  }
+
+  const data = await resp.json();
+
+  // Normalize InspectResponse — preserve is_safe exactly as the API returns it
+  // (boolean false = violation; true or missing = safe)
+  return {
+    is_safe:          data.is_safe === false ? false : true,
+    severity:         data.severity || 'NONE_SEVERITY',
+    classifications:  Array.isArray(data.classifications) ? data.classifications : [],
+    rules:            Array.isArray(data.rules) ? data.rules : [],
+    attack_technique: data.attack_technique || '',
+    explanation:      data.explanation || '',
+    event_id:         data.event_id || '',
+    action:           data.action || '',
+  };
+}
+
+/* ── Test connection ── */
+async function testDefConn() {
+  const mode = cfg.defMode || 'api';
+  const baseUrl = getDefenseBaseUrlFromForm();
+  if (!baseUrl) { showToast('Enter endpoint/URL first', 'err'); return; }
+
+  const apiKey    = document.getElementById('defApiKey').value.trim();
+  const gwHeaders = document.getElementById('gatewayHeaders').value.trim();
+
+  if (mode === 'api' && !apiKey) { showToast('Enter API Key first', 'err'); return; }
+
+  const url = mode === 'gateway'
+    ? baseUrl
+    : `${baseUrl}/api/v1/inspect/chat`;
+
+  const headers = buildDefenseHeaders(mode, apiKey, gwHeaders);
+
+  // Test payload — omit config when server policy is active (same as live behaviour)
+  const useServerPol = document.getElementById('pol_serverPolicy').checked;
+  const testBody = {
+    messages: [{ role:'user', content:'Connectivity test.' }],
+    metadata: { src_app:'velocis-intelli-agent', created_at: new Date().toISOString() },
+  };
+  if (!useServerPol) {
+    testBody.config = { enabled_rules: [{ rule_name: 'PII' }] };
+  }
+
+  showToast('Testing connection…', 'ok');
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(testBody),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (r.ok) {
+      const d = await r.json();
+      showToast(`✓ Connected! is_safe=${d.is_safe}, severity=${d.severity}`, 'ok');
+    } else {
+      const t = await r.text().catch(() => r.statusText);
+      showToast(`HTTP ${r.status}: ${String(t).slice(0,80)}`, 'err');
+    }
+  } catch (e) {
+    showToast(`Connection failed: ${e.message}`, 'err');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   LLM CALL
+══════════════════════════════════════════════════════════ */
+async function callLLM(prompt) {
+  const { modelProvider:p, modelName:m, llmApiKey:k,
+          customEndpoint:ep, systemPrompt:sys,
+          maxTokens:mt, temperature:tp } = cfg;
+
+  // ── Backend / On-Prem route ──────────────────────────────────────────────
+  // When useBackend=true OR provider=onprem, send to our FastAPI server.
+  // The server handles AI Defense + LLM internally, so we skip the
+  // client-side defense scan for this path (backend already does it).
+  if (cfg.useBackend || p === 'onprem') {
+    const modelToUse = p === 'onprem' ? (cfg.onpremModelName || m) : m;
+    const r = await fetch('/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: modelToUse,
+        messages: [
+          { role: 'system', content: sys || 'You are a helpful assistant.' },
+          { role: 'user',   content: prompt }
+        ],
+        max_tokens: mt,
+        temperature: tp
+      })
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error(e.detail || e.error?.message || r.statusText);
+    }
+    const d = await r.json();
+    // Check if backend blocked it (finish_reason = content_filter)
+    const choice = d.choices?.[0];
+    if (choice?.finish_reason === 'content_filter') {
+      // Surface as a blocked message using the existing UI
+      throw new Error('__BACKEND_BLOCKED__:' + (choice?.message?.content || cfg.blockMsg));
+    }
+    return choice?.message?.content || '(empty response)';
+  }
+
+  // ── Direct provider calls (original behaviour) ───────────────────────────
+  if (p === 'openai' || p === 'custom') {
+    const base = (p === 'custom' && ep)
+      ? ep.replace(/\/chat\/completions\/?$/, '')
+      : 'https://api.openai.com/v1';
+    const r = await fetch(`${base}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${k}` },
+      body: JSON.stringify({
+        model: m,
+        messages: [
+          { role:'system', content: sys || 'You are a helpful assistant.' },
+          { role:'user',   content: prompt }
+        ],
+        max_tokens: mt, temperature: tp
+      })
+    });
+    if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error?.message || r.statusText); }
+    const d = await r.json();
+    return d.choices?.[0]?.message?.content || '(empty response)';
+  }
+
+  if (p === 'google') {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`;
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: mt, temperature: tp }
+      })
+    });
+    if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error?.message || r.statusText); }
+    const d = await r.json();
+    return d.candidates?.[0]?.content?.parts?.[0]?.text || '(empty response)';
+  }
+
+  if (p === 'anthropic') {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type':'application/json',
+        'x-api-key': k,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: m, max_tokens: mt, system: sys,
+        messages: [{ role:'user', content: prompt }]
+      })
+    });
+    if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error?.message || r.statusText); }
+    const d = await r.json();
+    return d.content?.[0]?.text || '(empty response)';
+  }
+
+  throw new Error('Unknown provider: ' + p);
+}
+
+/* ══════════════════════════════════════════════════════════
+   MESSAGE RENDERING
+══════════════════════════════════════════════════════════ */
+function addUserMsg(text, fnames) {
+  const id = 'msg' + (++msgId);
+  const chips = fnames.length
+    ? `<div class="file-chips">${fnames.map(n => `
+        <span class="file-chip-b">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          ${esc(n)}
+        </span>`).join('')}</div>` : '';
+
+  appendMsg(`<div class="msg user" id="${id}">
+    <div class="avatar av-u">You</div>
+    <div class="bubble">${chips}${esc(text) || '<em style="opacity:.4;font-size:13px">File attached — no message text</em>'}</div>
+  </div>`);
+  return id;
+}
+
+function addAiMsg(text, defScanned) {
+  const id = 'msg' + (++msgId);
+  // Small inline green shield shown after message text when AI Defense passed
+  const shield = defScanned
+    ? `<span class="shield-ok" title="Passed Cisco AI Defense scan">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+       </span>` : '';
+  appendMsg(`<div class="msg ai" id="${id}">
+    <div class="avatar av-a">AI</div>
+    <div class="bubble">${esc(text)}${shield}</div>
+  </div>`);
+  return id;
+}
+
+function addBlockedMsg(result, isResponse, hasFile) {
+  const id = 'msg' + (++msgId);
+
+  const clsHtml = result.classifications.map(c => {
+    const k = c.replace('_VIOLATION','').toLowerCase();
+    const cls = {security:'t-sec', privacy:'t-priv', safety:'t-safe', relevance:'t-rel'}[k] || 't-rel';
+    return `<span class="vtag ${cls}">${c.replace(/_/g,' ')}</span>`;
+  }).join('');
+
+  // Build rules list with entity types when present
+  const ruleHtml = result.rules.map(r => {
+    const ents = Array.isArray(r.entity_types)
+      ? r.entity_types.filter(e => e && e.trim()).join(', ')
+      : '';
+    return `<div style="margin-bottom:4px">
+      <span class="vtag t-sec">${esc(r.rule_name || String(r))}</span>
+      ${ents ? `<span style="font-size:10px;color:var(--t3);margin-left:5px">${esc(ents)}</span>` : ''}
+    </div>`;
+  }).join('');
+
+  const heading = isResponse ? 'AI Response Blocked'
+    : hasFile ? 'Prompt + File Content Blocked'
+    : 'Prompt Blocked';
+
+  // action field ("Block" / "Allow") — shown when present
+  const actionBadge = result.action && result.action !== ''
+    ? `<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;background:var(--red-dim);color:var(--red);border:1px solid rgba(248,113,113,.3);margin-left:8px">${esc(result.action)}</span>`
+    : '';
+
+  appendMsg(`<div class="msg blocked" id="${id}">
+    <div class="avatar av-w">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div class="bubble">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+        <span style="font-weight:600;color:var(--red)">${esc(cfg.blockMsg)}</span>
+        ${actionBadge}
+      </div>
+      <div class="viol-card">
+        <div class="viol-head">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          ${heading}
+        </div>
+        ${result.classifications.length ? `<div class="viol-row"><span class="viol-lbl">Classifications</span><span class="viol-val">${clsHtml}</span></div>` : ''}
+        ${result.rules.length ? `<div class="viol-row"><span class="viol-lbl">Violated Rules</span><span class="viol-val">${ruleHtml}</span></div>` : ''}
+        ${result.attack_technique && result.attack_technique !== 'NONE_ATTACK_TECHNIQUE'
+          ? `<div class="viol-row"><span class="viol-lbl">Attack Technique</span><span class="viol-val">${esc(result.attack_technique)}</span></div>` : ''}
+        ${result.explanation ? `<div class="viol-row"><span class="viol-lbl">Explanation</span><span class="viol-val">${esc(result.explanation)}</span></div>` : ''}
+        ${result.event_id ? `<div class="viol-row"><span class="viol-lbl">Event ID</span><span class="viol-val" style="color:var(--t3);font-size:10px">${esc(result.event_id)}</span></div>` : ''}
+      </div>
+    </div>
+  </div>`);
+  return id;
+}
+
+function addScanMsg(hasFile, isResp) {
+  const id = 'msg' + (++msgId);
+  const lbl = isResp
+    ? 'Scanning LLM response with AI Defense…'
+    : hasFile
+      ? 'Scanning prompt + file contents with AI Defense…'
+      : 'Scanning prompt with AI Defense…';
+  appendMsg(`<div class="msg ai" id="${id}">
+    <div class="avatar av-a">🛡</div>
+    <div class="bubble" style="min-width:240px">
+      <div class="scanbar"><div class="scanfill"></div></div>
+      <div class="scanlbl">${lbl}</div>
+    </div>
+  </div>`);
+  return id;
+}
+
+function addTyping() {
+  const id = 'msg' + (++msgId);
+  appendMsg(`<div class="msg ai" id="${id}">
+    <div class="avatar av-a">AI</div>
+    <div class="bubble"><div class="typing"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div></div>
+  </div>`);
+  return id;
+}
+
+function addSysMsg(text) {
+  const id = 'msg' + (++msgId);
+  appendMsg(`<div class="msg sysmsg" id="${id}">
+    <div class="avatar av-w">!</div>
+    <div class="bubble">${esc(text)}</div>
+  </div>`);
+  return id;
+}
+
+function appendMsg(html) {
+  const c = document.getElementById('msgContainer');
+  c.insertAdjacentHTML('beforeend', html);
+  c.scrollTop = c.scrollHeight;
+}
+
+function removeMsg(id) { document.getElementById(id)?.remove(); }
+
+function clearChat() {
+  document.getElementById('msgContainer').innerHTML = `
+    <div class="empty-state" id="emptyState">
+      <div class="empty-shield">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <h3>Protected by Cisco AI Defense</h3>
+      <p>Configure settings ⚙ in the panel on the right, then start chatting.</p>
+    </div>`;
+  stats = { total:0, scanned:0, passed:0, blocked:0 };
+  updateStatusTab();
+}
+
+/* ══════════════════════════════════════════════════════════
+   UTILITIES
+══════════════════════════════════════════════════════════ */
+function sevColor(s) {
+  return { HIGH:'var(--red)', MEDIUM:'var(--amber)', LOW:'var(--green)' }[s] || 'var(--t3)';
+}
+
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/\n/g,'<br>');
+}
+
+function toggleEye(inputId, btn) {
+  const el = document.getElementById(inputId);
+  el.type = el.type === 'password' ? 'text' : 'password';
+  btn.textContent = el.type === 'password' ? '👁' : '🙈';
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function exportCfg() {
+  const safe = { ...cfg, defApiKey:'', llmApiKey:'' };
+  const blob = new Blob([JSON.stringify(safe, null, 2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'velocis-ai-defense-config.json';
+  a.click();
+  showToast('Config exported (API keys excluded)', 'ok');
+}
+
+function importCfg(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = ev => {
+    try {
+      const p = JSON.parse(ev.target.result);
+      cfg = { ...cfg, ...p };
+      buildRulesUI(); populateForm(); saveCfg(); updateStatusBar();
+      showToast('Config imported ✓', 'ok');
+    } catch { showToast('Invalid JSON config', 'err'); }
+  };
+  rd.readAsText(f);
+}
+
+function resetAll() {
+  if (!confirm('Reset all settings? This cannot be undone.')) return;
+  localStorage.removeItem('viad_cfg');
+  location.reload();
+}
+</script>
+</body>
+</html>
