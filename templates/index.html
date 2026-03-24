@@ -676,8 +676,9 @@ header {
             </div>
             <div class="form-group">
               <div class="form-label">Model Name <span class="req">*</span></div>
-              <div class="form-desc">Model identifier to send in the request body, e.g. <code style="color:var(--cyan)">./qwen72b</code> or <code style="color:var(--cyan)">Qwen/Qwen2.5-72B-Instruct</code>.</div>
-              <input type="text" class="form-input" id="gatewayModel" placeholder="./qwen72b" />
+              <div class="form-desc">Loaded from <code style="color:var(--cyan)">ONPREM_MODEL_NAME</code> in <code style="color:var(--cyan)">.env</code> — edit the env file and restart to change.</div>
+              <input type="text" class="form-input" id="gatewayModel" placeholder="./qwen72b" readonly
+                style="opacity:0.7;cursor:default;background:var(--card2);border-style:dashed;" />
             </div>
             <div class="form-group">
               <div class="form-label">Extra Headers (JSON, optional)</div>
@@ -992,10 +993,13 @@ async function fetchBackendConfig() {
     if (data.onprem) {
       cfg.onpremModelName = data.onprem.model_name || cfg.onpremModelName;
       cfg.onpremBaseUrl   = data.onprem.base_url   || cfg.onpremBaseUrl;
-      // Replace placeholder in MODELS
       MODELS.onprem = [cfg.onpremModelName || 'onprem-model'];
     }
-    // If backend is detected (we're served from FastAPI), enable backend mode by default
+    // Always sync gateway model from .env — this is the authoritative source.
+    // Overrides any stale value in localStorage so the UI and requests always match.
+    if (data.gateway_model) {
+      cfg.gatewayModel = data.gateway_model;
+    }
     cfg.useBackend = true;
     populateForm();
     updateStatusBar();
@@ -1154,7 +1158,7 @@ function saveSettings() {
   cfg.defApiKey    = document.getElementById('defApiKey').value.trim();
   cfg.gatewayUrl         = document.getElementById('gatewayUrl').value.trim();
   cfg.gatewayBearerToken = document.getElementById('gatewayBearerToken').value.trim();
-  cfg.gatewayModel       = document.getElementById('gatewayModel').value.trim();
+  // gatewayModel is read-only — always sourced from backend /api/config (.env), never from the UI field
   cfg.gatewayHeaders     = document.getElementById('gatewayHeaders').value.trim();
   cfg.defTimeout   = parseInt(document.getElementById('defTimeout').value) || 15000;
 

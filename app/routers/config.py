@@ -50,6 +50,7 @@ async def get_config(settings: Settings = Depends(get_settings)):
         ai_defense_configured=bool(
             settings.ai_defense_api_key or settings.ai_defense_mode == "gateway"
         ),
+        gateway_model=settings.onprem_model_name,  # same env var — the model served by the gateway
     )
 
 

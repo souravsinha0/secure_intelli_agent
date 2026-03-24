@@ -150,6 +150,7 @@ class AppConfig(BaseModel):
     onprem: OnPremConfig
     ai_defense_mode: str
     ai_defense_configured: bool
+    gateway_model: str  # model name to use when AI Defense gateway mode is active
 
 
 # ═══════════════════════════════════════════════════
