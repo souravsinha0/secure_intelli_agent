@@ -98,6 +98,9 @@ async def chat_completions(
         "",
     )
 
+    # ── Check if frontend requested to skip AI Defense ───────────────────────
+    skip_defense = request.headers.get("X-Skip-AI-Defense", "").lower() == "true"
+
     # ── AI Defense — inspect prompt ───────────────────────────────────────────
     defense_configured = bool(
         settings.ai_defense_api_key or settings.ai_defense_mode == "gateway"
@@ -105,7 +108,7 @@ async def chat_completions(
     defense_input_result = None
     defense_output_result = None
 
-    if defense_configured and user_content:
+    if defense_configured and user_content and not skip_defense:
         try:
             txn_id = f"{req_id}-input"
             defense_input_result = await defense_svc.inspect(
@@ -155,7 +158,7 @@ async def chat_completions(
         raise HTTPException(status_code=502, detail=f"LLM error: {exc}")
 
     # ── AI Defense — inspect response ─────────────────────────────────────────
-    if defense_configured and llm_text:
+    if defense_configured and llm_text and not skip_defense:
         try:
             txn_id = f"{req_id}-output"
             defense_output_result = await defense_svc.inspect(

@@ -1846,9 +1846,14 @@ async function callLLM(prompt) {
   // client-side defense scan for this path (backend already does it).
   if (cfg.useBackend || p === 'onprem') {
     const modelToUse = p === 'onprem' ? (cfg.onpremModelName || m) : m;
+    const headers = { 'Content-Type': 'application/json' };
+    // Tell backend whether to skip AI Defense inspection
+    if (cfg.defEnabled === false) {
+      headers['X-Skip-AI-Defense'] = 'true';
+    }
     const r = await fetch('/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify({
         model: modelToUse,
         messages: [
