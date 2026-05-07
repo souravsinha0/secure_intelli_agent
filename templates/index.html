@@ -191,7 +191,7 @@ header {
 }
 .msg.user   .bubble { background: linear-gradient(145deg, rgba(45,90,158,.5), rgba(74,144,217,.25)); border: 1px solid rgba(74,144,217,.3); color: var(--t1); border-bottom-right-radius: 4px; }
 .msg.ai     .bubble { background: var(--card); border: 1px solid var(--border); color: var(--t1); border-bottom-left-radius: 4px; }
-.msg.blocked .bubble { background: var(--red-dim); border: 1px solid rgba(248,113,113,.25); color: var(--t1); border-bottom-left-radius: 4px; }
+.msg.blocked .bubble { background: rgba(18,10,10,.85); border: 1px solid rgba(248,113,113,.35); color: var(--t1); border-bottom-left-radius: 4px; white-space: normal; }
 .msg.sysmsg .bubble { background: var(--card); border: 1px solid var(--border); color: var(--t2); font-size: 13px; font-family: var(--mono); border-bottom-left-radius: 4px; }
 
 /* File chips in message bubble */
@@ -218,17 +218,17 @@ header {
 }
 .viol-head { font-size: 11px; font-weight: 600; color: var(--red); display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
 .viol-row  { display: flex; gap: 6px; margin-bottom: 3px; align-items: center; flex-wrap: wrap; }
-.viol-lbl  { color: var(--t3); font-size: 10px; flex-shrink: 0; }
+.viol-lbl  { color: #8899bb; font-size: 10px; flex-shrink: 0; }
 .viol-lbl::after { content: ':'; }
-.viol-val  { color: var(--t2); font-size: 10px; }
+.viol-val  { color: #d0daf0; font-size: 10px; }
 .vtag {
   display: inline-block; padding: 1px 6px; border-radius: 3px;
   font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; margin: 1px;
 }
-.t-sec  { background: rgba(248,113,113,.2); color: var(--red); }
-.t-priv { background: rgba(251,191,36,.2);  color: var(--amber); }
-.t-safe { background: rgba(251,191,36,.12); color: #fb923c; }
-.t-rel  { background: rgba(168,180,208,.12);color: var(--t2); }
+.t-sec  { background: rgba(248,113,113,.25); color: #fca5a5; }
+.t-priv { background: rgba(251,191,36,.25);  color: #fde68a; }
+.t-safe { background: rgba(251,146,60,.2);   color: #fdba74; }
+.t-rel  { background: rgba(168,180,208,.2);  color: #c8d4ec; }
 
 /* Typing / scanning */
 .typing { display: flex; gap: 5px; align-items: center; padding: 4px 0; }
