@@ -1047,7 +1047,10 @@ function setDefMode(mode) {
 /* ── Master Defense enable/disable ── */
 function onDefEnabledToggle() {
   const on = document.getElementById('def_enabled').checked;
+  cfg.defEnabled = on;
+  saveCfg();
   document.getElementById('defConnectionSettings').classList.toggle('dimmed', !on);
+  updateStatusBar();
 }
 
 function onRegionChange() {
