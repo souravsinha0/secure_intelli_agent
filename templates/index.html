@@ -191,7 +191,7 @@ header {
 }
 .msg.user   .bubble { background: linear-gradient(145deg, rgba(45,90,158,.5), rgba(74,144,217,.25)); border: 1px solid rgba(74,144,217,.3); color: var(--t1); border-bottom-right-radius: 4px; }
 .msg.ai     .bubble { background: var(--card); border: 1px solid var(--border); color: var(--t1); border-bottom-left-radius: 4px; }
-.msg.blocked .bubble { background: var(--red-dim); border: 1px solid rgba(248,113,113,.25); color: var(--t1); border-bottom-left-radius: 4px; }
+.msg.blocked .bubble { background: rgba(18,10,10,.85); border: 1px solid rgba(248,113,113,.35); color: var(--t1); border-bottom-left-radius: 4px; white-space: normal; }
 .msg.sysmsg .bubble { background: var(--card); border: 1px solid var(--border); color: var(--t2); font-size: 13px; font-family: var(--mono); border-bottom-left-radius: 4px; }
 
 /* File chips in message bubble */
@@ -212,22 +212,23 @@ header {
 
 /* Violation card */
 .viol-card {
-  margin-top: 12px; padding: 12px 14px; border-radius: var(--r-md);
-  background: rgba(248,113,113,.06); border: 1px solid rgba(248,113,113,.25);
-  font-size: 12px; font-family: var(--mono);
+  margin-top: 8px; padding: 8px 10px; border-radius: var(--r-sm);
+  background: rgba(248,113,113,.05); border: 1px solid rgba(248,113,113,.2);
+  font-size: 11px; font-family: var(--mono);
 }
-.viol-head { font-size: 12px; font-weight: 600; color: var(--red); display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
-.viol-row  { display: flex; gap: 10px; margin-bottom: 5px; align-items: flex-start; }
-.viol-lbl  { color: var(--t3); min-width: 130px; flex-shrink: 0; font-size: 11px; }
-.viol-val  { color: var(--t2); font-size: 11px; }
+.viol-head { font-size: 11px; font-weight: 600; color: var(--red); display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
+.viol-row  { display: flex; gap: 6px; margin-bottom: 3px; align-items: center; flex-wrap: wrap; }
+.viol-lbl  { color: #8899bb; font-size: 10px; flex-shrink: 0; }
+.viol-lbl::after { content: ':'; }
+.viol-val  { color: #d0daf0; font-size: 10px; }
 .vtag {
-  display: inline-block; padding: 2px 7px; border-radius: 4px;
-  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; margin: 1px;
+  display: inline-block; padding: 1px 6px; border-radius: 3px;
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; margin: 1px;
 }
-.t-sec  { background: rgba(248,113,113,.2); color: var(--red); }
-.t-priv { background: rgba(251,191,36,.2);  color: var(--amber); }
-.t-safe { background: rgba(251,191,36,.12); color: #fb923c; }
-.t-rel  { background: rgba(168,180,208,.12);color: var(--t2); }
+.t-sec  { background: rgba(248,113,113,.25); color: #fca5a5; }
+.t-priv { background: rgba(251,191,36,.25);  color: #fde68a; }
+.t-safe { background: rgba(251,146,60,.2);   color: #fdba74; }
+.t-rel  { background: rgba(168,180,208,.2);  color: #c8d4ec; }
 
 /* Typing / scanning */
 .typing { display: flex; gap: 5px; align-items: center; padding: 4px 0; }
@@ -1972,53 +1973,39 @@ function addAiMsg(text, defScanned) {
 function addBlockedMsg(result, isResponse, hasFile) {
   const id = 'msg' + (++msgId);
 
-  const clsHtml = result.classifications.map(c => {
-    const k = c.replace('_VIOLATION','').toLowerCase();
-    const cls = {security:'t-sec', privacy:'t-priv', safety:'t-safe', relevance:'t-rel'}[k] || 't-rel';
-    return `<span class="vtag ${cls}">${c.replace(/_/g,' ')}</span>`;
-  }).join('');
+  const heading = isResponse ? 'Response blocked' : hasFile ? 'Prompt + file blocked' : 'Prompt blocked';
 
-  // Build rules list with entity types when present
-  const ruleHtml = result.rules.map(r => {
-    const ents = Array.isArray(r.entity_types)
-      ? r.entity_types.filter(e => e && e.trim()).join(', ')
-      : '';
-    return `<div style="margin-bottom:4px">
-      <span class="vtag t-sec">${esc(r.rule_name || String(r))}</span>
-      ${ents ? `<span style="font-size:10px;color:var(--t3);margin-left:5px">${esc(ents)}</span>` : ''}
-    </div>`;
-  }).join('');
+  // Tags: classifications + rules combined inline
+  const tags = [
+    ...result.classifications.map(c => {
+      const k = c.replace('_VIOLATION','').toLowerCase();
+      const cls = {security:'t-sec', privacy:'t-priv', safety:'t-safe', relevance:'t-rel'}[k] || 't-rel';
+      return `<span class="vtag ${cls}">${c.replace(/_/g,' ')}</span>`;
+    }),
+    ...result.rules.map(r => `<span class="vtag t-sec">${esc(r.rule_name || String(r))}</span>`)
+  ].join('');
 
-  const heading = isResponse ? 'AI Response Blocked'
-    : hasFile ? 'Prompt + File Content Blocked'
-    : 'Prompt Blocked';
-
-  // action field ("Block" / "Allow") — shown when present
-  const actionBadge = result.action && result.action !== ''
-    ? `<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;background:var(--red-dim);color:var(--red);border:1px solid rgba(248,113,113,.3);margin-left:8px">${esc(result.action)}</span>`
-    : '';
+  const details = [
+    result.attack_technique && result.attack_technique !== 'NONE_ATTACK_TECHNIQUE'
+      ? `<div class="viol-row"><span class="viol-lbl">Technique</span><span class="viol-val">${esc(result.attack_technique)}</span></div>` : '',
+    result.explanation
+      ? `<div class="viol-row"><span class="viol-lbl">Reason</span><span class="viol-val">${esc(result.explanation)}</span></div>` : '',
+    result.event_id
+      ? `<div class="viol-row"><span class="viol-lbl">Event</span><span class="viol-val" style="color:var(--t4)">${esc(result.event_id)}</span></div>` : ''
+  ].join('');
 
   appendMsg(`<div class="msg blocked" id="${id}">
     <div class="avatar av-w">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
     </div>
-    <div class="bubble">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
-        <span style="font-weight:600;color:var(--red)">${esc(cfg.blockMsg)}</span>
-        ${actionBadge}
+    <div class="bubble" style="padding:10px 13px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:${tags || details ? '7px' : '0'}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span style="font-size:13px;font-weight:600;color:var(--red)">${heading}</span>
+        ${result.severity && result.severity !== 'NONE_SEVERITY' ? `<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:var(--red-dim);color:var(--red);font-family:var(--mono);margin-left:auto">${esc(result.severity)}</span>` : ''}
       </div>
-      <div class="viol-card">
-        <div class="viol-head">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          ${heading}
-        </div>
-        ${result.classifications.length ? `<div class="viol-row"><span class="viol-lbl">Classifications</span><span class="viol-val">${clsHtml}</span></div>` : ''}
-        ${result.rules.length ? `<div class="viol-row"><span class="viol-lbl">Violated Rules</span><span class="viol-val">${ruleHtml}</span></div>` : ''}
-        ${result.attack_technique && result.attack_technique !== 'NONE_ATTACK_TECHNIQUE'
-          ? `<div class="viol-row"><span class="viol-lbl">Attack Technique</span><span class="viol-val">${esc(result.attack_technique)}</span></div>` : ''}
-        ${result.explanation ? `<div class="viol-row"><span class="viol-lbl">Explanation</span><span class="viol-val">${esc(result.explanation)}</span></div>` : ''}
-        ${result.event_id ? `<div class="viol-row"><span class="viol-lbl">Event ID</span><span class="viol-val" style="color:var(--t3);font-size:10px">${esc(result.event_id)}</span></div>` : ''}
-      </div>
+      ${tags ? `<div style="margin-bottom:${details ? '6px' : '0'};line-height:1.8">${tags}</div>` : ''}
+      ${details ? `<div class="viol-card" style="margin-top:0">${details}</div>` : ''}
     </div>
   </div>`);
   return id;
