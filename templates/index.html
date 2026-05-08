@@ -881,9 +881,42 @@ header {
 // Exact rule_name enum values from Cisco AI Defense API spec
 const RULES = [
   { name:"Prompt Injection",                desc:"Prompt injection / jailbreak attacks",                def:true  },
-  { name:"PII",                             desc:"Personally Identifiable Information (SSN, email…)",   def:true  },
-  { name:"PCI",                             desc:"Payment card data (card number, CVV, expiry…)",       def:true  },
-  { name:"PHI",                             desc:"Protected Health Information (HIPAA-covered data)",   def:true  },
+  { name:"PII", desc:"Personally Identifiable Information", def:true,
+    entity_types:[
+      "Email Address","IP Address","Phone Number",
+      "Driver's License Number (US)","Passport Number (US)",
+      "Social Security Number (SSN) (US)"
+    ],
+    default_entity_types:[
+      "Email Address","IP Address","Phone Number",
+      "Driver's License Number (US)","Passport Number (US)",
+      "Social Security Number (SSN) (US)"
+    ]
+  },
+  { name:"PCI", desc:"Payment Card Industry — financial data", def:true,
+    entity_types:[
+      "Credit Card Number","Bank Account Number (US)",
+      "International Bank Account Number (IBAN)",
+      "American Bankers Association (ABA) Routing Number (US)",
+      "Individual Taxpayer Identification Number (ITIN) (US)"
+    ],
+    default_entity_types:[
+      "Credit Card Number","Bank Account Number (US)",
+      "International Bank Account Number (IBAN)",
+      "American Bankers Association (ABA) Routing Number (US)",
+      "Individual Taxpayer Identification Number (ITIN) (US)"
+    ]
+  },
+  { name:"PHI", desc:"Protected Health Information (HIPAA)", def:true,
+    entity_types:[
+      "Medical License Number (US)",
+      "National Health Service (NHS) Number"
+    ],
+    default_entity_types:[
+      "Medical License Number (US)",
+      "National Health Service (NHS) Number"
+    ]
+  },
   { name:"Hate Speech",                     desc:"Content targeting protected groups",                  def:true  },
   { name:"Harassment",                      desc:"Threatening or abusive language",                     def:true  },
   { name:"Violence & Public Safety Threats",desc:"Content encouraging violence or threats",             def:true  },
@@ -952,6 +985,7 @@ let cfg = {
   blockMsg:         '⚠️ This request was blocked by Cisco AI Defense due to a policy violation. Your query could not be processed.',
   useServerPolicy:  true,   // true = send no config.enabled_rules; server-side policy applies
   enabledRules:     RULES.filter(r=>r.def).map(r=>r.name),
+  enabledEntityTypes: {},  // { "PII": [...], "PCI": [...], "PHI": [...] }
   sevThreshold:     'MEDIUM',
   scanResp:         true,
 };
@@ -1185,8 +1219,15 @@ function saveSettings() {
 
   // Collect custom rules (only relevant when useServerPolicy is false)
   cfg.enabledRules = [];
-  document.querySelectorAll('#rulesUI input[data-rule]').forEach(cb => {
+  cfg.enabledEntityTypes = {};
+  document.querySelectorAll('#rulesUI input[data-rule]:not([data-entity])').forEach(cb => {
     if (cb.checked) cfg.enabledRules.push(cb.dataset.rule);
+  });
+  // Collect entity type selections for PII/PCI/PHI
+  document.querySelectorAll('#rulesUI input[data-entity]').forEach(cb => {
+    const rule = cb.dataset.rule;
+    if (!cfg.enabledEntityTypes[rule]) cfg.enabledEntityTypes[rule] = [];
+    if (cb.checked) cfg.enabledEntityTypes[rule].push(cb.dataset.entity);
   });
 
   saveCfg();
@@ -1292,17 +1333,39 @@ function setSev(lv, silent) {
 function buildRulesUI() {
   document.getElementById('rulesUI').innerHTML = RULES.map(r => {
     const on = cfg.enabledRules.includes(r.name);
+    const entityBlock = r.entity_types ? (() => {
+      const saved = cfg.enabledEntityTypes?.[r.name] || r.default_entity_types;
+      return `<div class="entity-types" id="et-${r.name.replace(/\W/g,'_')}" style="display:${on?'block':'none'};margin:6px 0 2px 2px;padding:6px 10px;background:rgba(255,255,255,.03);border-left:2px solid var(--border2);border-radius:0 4px 4px 0">
+        <div style="font-size:10px;color:var(--t3);margin-bottom:5px;font-family:var(--mono)">Entity types:</div>
+        ${r.entity_types.map(et => `
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);margin-bottom:3px;cursor:pointer">
+            <input type="checkbox" data-rule="${r.name}" data-entity="${et}" ${saved.includes(et)?'checked':''}
+              style="accent-color:var(--blue);width:12px;height:12px;cursor:pointer">
+            ${et}
+          </label>`).join('')}
+      </div>`;
+    })() : '';
+
     return `<div class="toggle-row">
       <div class="toggle-info">
         <div class="toggle-name">${r.name}</div>
         <div class="toggle-desc">${r.desc}</div>
+        ${entityBlock}
       </div>
       <label class="toggle-sw">
-        <input type="checkbox" data-rule="${r.name}" ${on ? 'checked' : ''}>
+        <input type="checkbox" data-rule="${r.name}" ${on ? 'checked' : ''}
+          onchange="onRuleToggle(this,'${r.name.replace(/'/g,"\\'")}')"
+        >
         <span class="toggle-sl"></span>
       </label>
     </div>`;
   }).join('');
+}
+
+function onRuleToggle(cb, ruleName) {
+  const key = ruleName.replace(/\W/g,'_');
+  const etDiv = document.getElementById('et-' + key);
+  if (etDiv) etDiv.style.display = cb.checked ? 'block' : 'none';
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1669,7 +1732,17 @@ async function callDefenseInspectAPI(content, role) {
 
   if (cfg.useServerPolicy === false) {
     body.config = {
-      enabled_rules: cfg.enabledRules.map(name => ({ rule_name: name }))
+      enabled_rules: cfg.enabledRules.map(name => {
+        const ruleSpec = RULES.find(r => r.name === name);
+        const entry = { rule_name: name };
+        if (ruleSpec?.entity_types) {
+          const selected = cfg.enabledEntityTypes?.[name];
+          entry.entity_types = (selected && selected.length > 0)
+            ? selected
+            : ruleSpec.default_entity_types;
+        }
+        return entry;
+      })
     };
   }
 
@@ -1781,7 +1854,7 @@ async function testApiConn() {
     metadata: { src_app:'velocis-intelli-agent', created_at: new Date().toISOString() },
   };
   if (!useServerPol) {
-    testBody.config = { enabled_rules: [{ rule_name: 'PII' }] };
+    testBody.config = { enabled_rules: [{ rule_name: 'PII', entity_types: ['Email Address', 'Phone Number'] }] };
   }
 
   showToast('Testing API connection…', 'ok');
